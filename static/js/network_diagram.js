@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         selector: 'node[role="Router"]',
                         style: {
                             'shape': 'rectangle',
-                            'background-image': 'url(/static/images/router.png)',
+                            'background-image': 'url(/static/images/router.svg)',
                             'background-fit': 'cover',
                             'label': 'data(id)',
                             'width': 80,
@@ -42,14 +42,74 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     },
                     {
-                        selector: 'node[role="Access Switch"]',
+                        selector: 'node[role="NGFW"]',
                         style: {
                             'shape': 'rectangle',
-                            'background-image': 'url(/static/images/switch.png)',
+                            'background-image': 'url(/static/images/firewall.svg)',
                             'background-fit': 'cover',
                             'label': 'data(id)',
-                            'width': 90,
-                            'height': 50,
+                            'width': 40,
+                            'height': 35,
+                            'text-valign': 'center',
+                            'color': '#fff',
+                            'text-outline-width': 2,
+                            'text-outline-color': '#888'
+                        }
+                    },
+                    {
+                        selector: 'node[role="SF-DC-01"]',
+                        style: {
+                            'shape': 'rectangle',
+                            'background-image': 'url(/static/images/server.svg)',
+                            'background-fit': 'cover',
+                            'label': 'data(id)',
+                            'width': 30,
+                            'height': 25,
+                            'text-valign': 'center',
+                            'color': '#fff',
+                            'text-outline-width': 2,
+                            'text-outline-color': '#888'
+                        }
+                    },
+                    {
+                        selector: 'node[role="SF-DC-02"]',
+                        style: {
+                            'shape': 'rectangle',
+                            'background-image': 'url(/static/images/server.svg)',
+                            'background-fit': 'cover',
+                            'label': 'data(id)',
+                            'width': 30,
+                            'height': 25,
+                            'text-valign': 'center',
+                            'color': '#fff',
+                            'text-outline-width': 2,
+                            'text-outline-color': '#888'
+                        }
+                    },
+                    {
+                        selector: 'node[role="Server"]',
+                        style: {
+                            'shape': 'rectangle',
+                            'background-image': 'url(/static/images/server.svg)',
+                            'background-fit': 'cover',
+                            'label': 'data(id)',
+                            'width': 30,
+                            'height': 25,
+                            'text-valign': 'center',
+                            'color': '#fff',
+                            'text-outline-width': 2,
+                            'text-outline-color': '#888'
+                        }
+                    },
+                    {
+                        selector: 'node[role="Switch"]',
+                        style: {
+                            'shape': 'rectangle',
+                            'background-image': 'url(/static/images/switch.svg)',
+                            'background-fit': 'cover',
+                            'label': 'data(id)',
+                            'width': 40,
+                            'height': 30,
                             'text-valign': 'center',
                             'color': '#fff',
                             'text-outline-width': 2,
@@ -71,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         selector: 'edge',
                         style: {
-                            'width': 3,
+                            'width': 2,
                             'line-color': '#ccc',
                             'target-arrow-color': '#ccc',
                             'target-arrow-shape': 'triangle',
@@ -174,5 +234,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 link.download = 'network_diagram.svg';
                 link.click();
             });
+
         });
 });

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Diagram</title>
+    <style>
+        #cy {
+            width: 100%;
+            height: 1400px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="cy"></div>
+    <div id="controls">
+        <input type="text" id="start-node" placeholder="Start node ID">
+        <input type="text" id="end-node" placeholder="End node ID">
+        <button id="find-path-btn">Find Path</button>
+	<button id="clearPathBtn">Clear Path</button>
+        <button id="exportPNGBtn">Export PNG</button>
+        <button id="exportSVGBtn">Export SVG</button>
+        <button id="exportJsonBtn">Export JSON</button>
+    </div>
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/webcola/WebCola/cola.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-cola/cytoscape-cola.js"></script>
+
+    <script src="/static/js/network_diagram.js"></script>
+</body>
+</html>

@@ -1,13 +1,14 @@
 import pynetbox
 import urllib3
 import ipaddress
-import hashlib
 from functools import lru_cache
 from pydantic import BaseModel, Field, field_validator
 from itertools import chain
 from pprint import pprint
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 from flask import Flask, jsonify, request, send_from_directory, render_template
+import os
+import hashlib
 
 app = Flask(__name__)
 
@@ -34,6 +35,30 @@ class Device(BaseModel):
             return v.get("name")
         return v
 
+class Vmachine(BaseModel):
+    """Basemodel to extract only the required information"""
+    id: int
+    name: str
+    role: Optional[str] = Field(alias="name",default = 'VM')
+    parent: Optional[str] = Field(alias="tenant",default=None)
+
+    @field_validator('role', mode='before')
+    @classmethod
+    def extract_role_name(cls, v):
+        """extract the role name form the nested role object"""
+        if isinstance(v, dict):
+            return v.get('name')
+        return v
+
+    @field_validator("parent", mode="before")
+    @classmethod
+    def extract_tenant_name(cls, v):
+        """extract the tenant name form the nested tenant object"""
+        if isinstance(v, dict):
+            return v.get("name")
+        return v
+
+
 class Interface(BaseModel):
     """Basemodel to extract only the required information"""
     id: int
@@ -50,6 +75,24 @@ class Interface(BaseModel):
         if isinstance(v, dict):
             return v.get('name')
         return v
+
+class Interface_vm(BaseModel):
+    """Basemodel to extract only the required information"""
+    id: int
+    name: str
+    ip_address: str
+    virtual_machine: str
+    vrf: Optional[str] = Field(default=None)
+    tenant: Optional[str] = Field(default=None)
+
+    @field_validator('virtual_machine', mode='before')
+    @classmethod
+    def extract_device_name(cls, v):
+        """extract the device name from the nested device object"""
+        if isinstance(v, dict):
+            return v.get('name')
+        return v
+
 
 def string_to_color(string):
     # Hash the string using MD5 for simplicity, you can use other hashing algorithms too
@@ -71,11 +114,21 @@ def init_netbox(url: str, token: str) -> pynetbox.core.api.Api:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # Disable certificate warnings
     return nb
 
+
 def get_devices(nb, tenant_id) -> Dict[Dict,Any]:
     """Gets the devices from the NetBox REST API and returns a dictionary of devices with name as key"""
     try:
-        devices = nb.dcim.devices.filter(tenant_id=tenant_id, interface_count__gt=0)
+        devices = nb.dcim.devices.filter(site_id=tenant_id, interface_count__gt=0)
         return {device.name:Device(**dict(device)).model_dump(exclude_none=True) for device in devices} if devices else {}
+    except Exception as e:
+        print(f"Error fetching devices: {e}")
+        return {}
+
+def get_vms(nb, tenant_id) -> Dict[Dict,Any]:
+    """Gets the devices from the NetBox REST API and returns a dictionary of devices with name as key"""
+    try:
+        vms = nb.virtualization.virtual_machines.filter(site_id=tenant_id, interface_count__gt=0)
+        return {vm.name:Vmachine(**dict(vm)).model_dump(exclude_none=True) for vm in vms} if vms else {}
     except Exception as e:
         print(f"Error fetching devices: {e}")
         return {}
@@ -113,7 +166,39 @@ def get_interfaces(nb, device_id_list: List[int]) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"Error fetching interfaces: {e}")
         return []
- 
+
+
+
+def get_interfaces_vm(nb, vms_id_list: List[int]) -> List[Dict[str, Any]]:
+    """Gets the interfaces from the NetBox REST API for a list of device that is split in chunks to
+    avoid to long URL in the Request to NetBox. Then it gets the matches the interfaces with the 
+    IP addresses and creates a list of interfaces dictionaries with id, name, device, ip address 
+    and optional vrf and tenant."""
+    try:
+        interfaces = list(chain.from_iterable(nb.virtualization.interfaces.filter(virtual_machine_id=chunk) for chunk in chunks(vms_id_list, 20)))
+        interface_dict = {interface.id: interface for interface in interfaces}
+
+        ip_addresses = list(chain.from_iterable(nb.ipam.ip_addresses.filter(virtual_machine_id=chunk) for chunk in chunks(vms_id_list, 20)))
+        clean_interfaces = []
+
+        for ip_address in ip_addresses:
+            interface = interface_dict.get(ip_address.assigned_object_id)
+            if interface:
+                interface_data = dict(interface)
+                interface_data['ip_address'] = ip_address.address
+                if vrf := ip_address.vrf:
+                    interface_data['vrf'] = vrf.name
+                if tenant := ip_address.tenant:
+                    interface_data['tenant'] = tenant.name
+                clean_interface = Interface_vm(**interface_data).model_dump(exclude_none=True)
+                clean_interfaces.append(clean_interface)
+        return clean_interfaces
+
+
+    except Exception as e:
+        print(f"Error fetching interfaces: {e}")
+        return []
+    
 def convert_ip2subnet(ip_address: str) -> str:
     """Converts a IP address with prefixlen to network address with prefixlen"""
     return str(ipaddress.ip_network(ip_address, strict=False))
@@ -194,6 +279,7 @@ def create_edges_and_nodes(device_dict: Dict[Dict, Any], interface_list: List[Di
 
     return nodes, edges
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -201,23 +287,36 @@ def index():
 @app.route('/api/nodes_and_edges', methods=['GET'])
 @lru_cache(maxsize=32)
 def get_nodes_and_edges():
-    netbox_url = "https://demo.netbox.dev/" # NetBox Demo Instance
-    netbox_token = "06dd3e7534485df1d3e91f80c97f05ca49e77f54" # Create your own key!
-    tenant_id = 5 #  Dunder-Mifflin, Inc.
+    netbox_url = os.getenv('NURL',default = "https://demo.netbox.dev/")
+    netbox_token = os.getenv('NTOKEN', default = "06dd3e7534485df1d3e91f80c97f05ca49e77f54")
+    tenant_id = 1 #  Dunder-Mifflin, Inc.
 
     nb = init_netbox(netbox_url, netbox_token)
     devices = get_devices(nb, tenant_id)
+    vms = get_vms(nb, tenant_id)
     if not devices:
         print("No devices found.")
-        return jsonify({})
-    device_id_list = [device["id"] for device in devices]
+        return
+    if not vms:
+        print("No vms found.")
+        return
+    device_id_list = [device[1]["id"] for device in devices.items()]
+    vms_id_list = [vm[1]["id"] for vm in vms.items()]
     interfaces = get_interfaces(nb, device_id_list)
+    interfaces_vm = get_interfaces_vm(nb, vms_id_list)
     if not interfaces:
         print("No interfaces found.")
-        return jsonify({})
+        return
+    if not interfaces_vm:
+        print("No vm interfaces found.")
+        return
+    for int_vm in interfaces_vm:
+        int_vm['device']=int_vm['virtual_machine']
+    devices.update(vms)
+    for iface in interfaces_vm:
+       interfaces.append(iface)
     nodes, edges = create_edges_and_nodes(devices, interfaces)
     return jsonify({'nodes': nodes, 'edges': edges})
 
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True,port=os.getenv('CPORT', default = 8000))
