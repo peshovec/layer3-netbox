@@ -1,0 +1,49 @@
+/* Reset default browser styles */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Style for the network diagram container */
+#cy {
+    width: 100%;
+    height: 1400px; /* Adjust height as needed */
+    border: 1px solid #ccc;
+}
+
+/* Highlighted class for path elements */
+.highlighted {
+    background-color: yellow !important;
+    line-color: red !important;
+    target-arrow-color: red !important;
+    transition-property: background-color, line-color, target-arrow-color;
+    transition-duration: 0.5s;
+}
+
+/* Node and edge default styles */
+.node {
+    background-color: #666 !important;
+    color: #fff !important;
+    text-align: center;
+    text-valign: center;
+    text-outline-width: 2;
+    text-outline-color: #888;
+}
+
+.edge {
+    width: 3px !important;
+    line-color: #ccc !important;
+    target-arrow-color: #ccc !important;
+    target-arrow-shape: triangle;
+}
+
+/* Make sure the styles defined in Cytoscape.js take precedence */
+#cy .cy-node, #cy .cy-edge {
+    background-color: inherit !important;
+    border-color: inherit !important;
+    border-width: inherit !important;
+    background-opacity: inherit !important;
+    text-outline-color: inherit !important;
+    text-outline-width: inherit !important;
+}
